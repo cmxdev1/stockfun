@@ -15,7 +15,12 @@ export async function GET() {
     chunk: WORLD.chunk,
     seaLevel: WORLD.seaLevel,
     maxHeight: WORLD.maxHeight,
-    chain: { id: activeChain().id, name: activeChain().name, live: isLive() },
+    chain: {
+      id: activeChain().id,
+      name: activeChain().name,
+      live: isLive(),
+      explorer: activeChain().blockExplorers?.default.url ?? null,
+    },
     stats,
   });
 }

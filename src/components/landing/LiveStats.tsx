@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { formatUsd } from '@/lib/stocks';
+import { STOCKS, formatUsd } from '@/lib/stocks';
+import { BIOME_ORDER } from '@/game/world';
 
 export interface StatsPayload {
   prospectors: number;
@@ -98,18 +99,18 @@ export function HeroStats({ stats }: { stats: StatsPayload | null }) {
       tone: 'text-gold',
     },
     {
-      label: 'Caches opened',
-      value: stats ? stats.claims.toLocaleString('en-US') : '—',
+      label: 'Stock Tokens buried',
+      value: String(STOCKS.length),
       tone: 'text-cyan',
     },
     {
-      label: 'Prospectors',
-      value: stats ? stats.prospectors.toLocaleString('en-US') : '—',
+      label: 'Biomes to sweep',
+      value: String(BIOME_ORDER.length),
       tone: 'text-mint',
     },
     {
-      label: 'World',
-      value: 'Infinite',
+      label: 'Caches opened',
+      value: stats ? stats.claims.toLocaleString('en-US') : '—',
       tone: 'text-violet',
     },
   ];

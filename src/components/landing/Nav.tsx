@@ -53,12 +53,14 @@ export function Nav() {
         </div>
 
         <div className="flex items-center gap-2">
-          <LinkButton href="/play" tone="gold" size="sm" className="hidden sm:inline-flex">
-            Launch the Lode
-            <span aria-hidden className="transition-transform group-hover:translate-x-0.5">
-              →
-            </span>
-          </LinkButton>
+          <span className="hidden sm:block">
+            <LinkButton href="/play" tone="gold" size="sm">
+              Launch the Lode
+              <span aria-hidden className="transition-transform group-hover:translate-x-0.5">
+                →
+              </span>
+            </LinkButton>
+          </span>
           <button
             type="button"
             onClick={() => setOpen((v) => !v)}

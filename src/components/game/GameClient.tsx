@@ -24,11 +24,13 @@ import {
   Minimap,
   KeyLegend,
   SignalPanel,
+  SignalStrip,
   TopBar,
   type HaulEntry,
   type LogEntry,
 } from './Hud';
 import { BootVeil } from './BootVeil';
+import { ProfileMenu } from './ProfileMenu';
 
 const STORAGE_KEY = 'stockfun.credentials.v1';
 
@@ -79,12 +81,14 @@ export function GameClient() {
   const [scanning, setScanning] = useState(false);
   const [xp, setXp] = useState(0);
   const [hud, setHud] = useState<HudSnapshot | null>(null);
+  const [explorerBase, setExplorerBase] = useState('https://robinhoodchain.blockscout.com');
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const engineRef = useRef<LodeEngine | null>(null);
   const rendererRef = useRef<LodeRenderer | null>(null);
   const credsRef = useRef<Credentials | null>(null);
   const logSeq = useRef(0);
+  const toggleAutonomyRef = useRef<() => void>(() => {});
   const powRef = useRef<{ cacheId: string; cursor: number; nonce: number | null } | null>(null);
   const pendingClaim = useRef<CacheSignal | null>(null);
   const claiming = useRef(false);
@@ -113,6 +117,7 @@ export function GameClient() {
           if (!cancelled) {
             setEpoch(w.epoch ?? 0);
             setLive(Boolean(w.chain?.live));
+            if (w.chain?.explorer) setExplorerBase(w.chain.explorer);
           }
         }
       } catch {
@@ -452,9 +457,7 @@ export function GameClient() {
         if (engine.mining) engine.strike();
         else if (!engine.beginMining()) log('Nothing within reach to dig.', 'warn');
       }
-      if (k === 'f') {
-        engine.agentConfig = { ...engine.agentConfig, autonomous: !engine.agentConfig.autonomous };
-      }
+      if (k === 'f') toggleAutonomyRef.current();
       if (k === 'escape') engine.cancelMining();
     };
 
@@ -501,31 +504,58 @@ export function GameClient() {
     engineRef.current?.nudgeZoom(e.deltaY);
   }, []);
 
+  /** Clear the local session and go back through onboarding with a new wallet. */
+  const switchWallet = useCallback(() => {
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch {
+      /* private browsing — the in-memory reset below is enough */
+    }
+    window.location.reload();
+  }, []);
+
   /* ---------------------------------------------------------------- *
    * Agent autonomy toggle (persisted)
    * ---------------------------------------------------------------- */
 
-  const toggleAutonomy = useCallback(async () => {
+  /** Apply an agent change locally at once, then persist it in the background. */
+  const persistAgent = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const tuneAgent = useCallback((patch: Partial<AgentConfig>) => {
     const engine = engineRef.current;
     const creds = credsRef.current;
     if (!engine || !creds) return;
-    const next: AgentConfig = {
-      ...engine.agentConfig,
-      autonomous: !engine.agentConfig.autonomous,
-    };
+    const next: AgentConfig = { ...engine.agentConfig, ...patch };
     engine.agentConfig = next;
     setProfile((p) => (p ? { ...p, agent: next } : p));
-    log(next.autonomous ? `${next.name} is hunting on its own.` : `${next.name} falls in beside you.`);
-    try {
-      await fetch('/api/agent', {
+
+    // Sliders fire continuously — debounce the write rather than the change.
+    if (persistAgent.current) clearTimeout(persistAgent.current);
+    persistAgent.current = setTimeout(() => {
+      fetch('/api/agent', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ playerId: creds.playerId, secret: creds.secret, agent: next }),
+      }).catch(() => {
+        /* the local change still applies for this session */
       });
-    } catch {
-      /* the local change still applies for this session */
-    }
-  }, [log]);
+    }, 500);
+  }, []);
+
+  const toggleAutonomy = useCallback(() => {
+    const engine = engineRef.current;
+    if (!engine) return;
+    const autonomous = !engine.agentConfig.autonomous;
+    tuneAgent({ autonomous });
+    log(
+      autonomous
+        ? `${engine.agentConfig.name} is hunting on its own.`
+        : `${engine.agentConfig.name} falls in beside you.`,
+    );
+  }, [log, tuneAgent]);
+
+  useEffect(() => {
+    toggleAutonomyRef.current = toggleAutonomy;
+  }, [toggleAutonomy]);
 
   /* ---------------------------------------------------------------- *
    * Render
@@ -579,6 +609,17 @@ export function GameClient() {
             live={live}
             altitude={hud.altitude}
             richness={hud.richness}
+            slot={
+              <ProfileMenu
+                profile={profile}
+                level={level}
+                xp={xp}
+                claims={haul.length + profile.claims}
+                haulUsd={totalHaul}
+                explorerBase={explorerBase}
+                onSwitch={switchWallet}
+              />
+            }
           />
 
           <div className="flex flex-1 items-start justify-between gap-3 px-3 sm:px-4">
@@ -586,6 +627,7 @@ export function GameClient() {
               <AgentPanel
                 agent={profile.agent}
                 onToggleAutonomy={toggleAutonomy}
+                onTune={tuneAgent}
                 distance={hud.agentDistance}
               />
               <HaulPanel haul={haul} total={totalHaul} />
@@ -613,8 +655,16 @@ export function GameClient() {
               />
             </div>
 
-            <div className="flex flex-1 flex-col items-center gap-3">
+            <div className="flex min-w-0 flex-1 flex-col items-center gap-3">
               <LogStack entries={logs} />
+              <div className="w-full sm:hidden">
+                <SignalStrip
+                  signals={hud.signals}
+                  player={hud.player}
+                  focusId={hud.focusId}
+                  onTrack={(s) => engineRef.current?.travelTo(s)}
+                />
+              </div>
               <ActionBar
                 onScan={() => {
                   const engine = engineRef.current;

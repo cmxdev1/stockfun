@@ -8,7 +8,7 @@ export function Hero() {
   const stats = useStats();
 
   return (
-    <section className="relative flex min-h-[100svh] flex-col items-center justify-center overflow-hidden px-5 pb-20 pt-32 sm:px-8">
+    <section className="relative flex min-h-[100svh] flex-col items-center justify-center overflow-hidden px-5 pb-24 pt-28 sm:pb-32 sm:pt-32 sm:px-8">
       <WorldBackdrop origin={{ x: 1120, y: 800 }} zoom={0.76} speed={0.8} blur={2.5} scrim />
 
       {/* Aurora wash */}
@@ -38,11 +38,10 @@ export function Hero() {
           buried in this world.
         </h1>
 
-        <p className="mt-7 max-w-2xl text-pretty text-base leading-relaxed text-ink-dim sm:text-lg animate-[rise_0.9s_0.15s_both]">
-          STOCKFUN is an infinite, procedurally generated treasure map. We buy real tokenised Stock
-          Tokens on Robinhood Chain, deposit them into a vault, and scatter them across random
-          coordinates in <span className="text-ink">THE LODE</span>. Forge an agent, sweep the ground
-          for a signal, dig — and the fragment lands in your wallet before the dust settles.
+        <p className="mt-7 max-w-xl text-pretty text-base leading-relaxed text-ink-dim sm:text-lg animate-[rise_0.9s_0.15s_both]">
+          Real tokenised Stock Tokens, bought on Robinhood Chain and buried at random coordinates
+          across <span className="text-ink">THE LODE</span> — an infinite procedural world. Forge an
+          agent, sweep the ground, dig. The fragment hits your wallet before the dust settles.
         </p>
 
         <div className="mt-9 flex flex-col items-center gap-3 sm:flex-row animate-[rise_1s_0.25s_both]">
@@ -60,10 +59,8 @@ export function Hero() {
           </a>
         </div>
 
-        <p className="mono mt-5 text-[11px] uppercase tracking-[0.2em] text-ink-mute animate-[rise_1s_0.35s_both]">
-          {stats?.live
-            ? 'Vault connected · payouts settle on Robinhood Chain'
-            : 'Demo vault · connect a vault key to settle live on Robinhood Chain'}
+        <p className="mono mt-5 text-[10px] uppercase tracking-[0.2em] text-ink-mute sm:text-[11px] animate-[rise_1s_0.35s_both]">
+          {stats?.live ? 'Payouts settle on Robinhood Chain' : 'Demo mode · payouts are simulated'}
         </p>
 
         <div className="mt-12 w-full animate-[rise_1.1s_0.45s_both]">
@@ -74,7 +71,7 @@ export function Hero() {
       <a
         href="#how"
         aria-label="Scroll to how it works"
-        className="absolute bottom-7 left-1/2 z-10 -translate-x-1/2 text-ink-mute transition-colors hover:text-ink"
+        className="absolute bottom-6 left-1/2 z-10 hidden -translate-x-1/2 sm:block text-ink-mute transition-colors hover:text-ink"
       >
         <span className="mono flex flex-col items-center gap-2 text-[10px] uppercase tracking-[0.3em]">
           Descend

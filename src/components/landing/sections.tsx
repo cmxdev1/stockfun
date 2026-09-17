@@ -468,7 +468,7 @@ const FAQS = [
   },
   {
     q: 'How small is a fragment?',
-    a: 'Tiny, and deliberately so. A common cache is a few cents of notional; a mythic is a few tens of dollars. Stock Tokens are divisible to 18 decimals, so a cache can hold 0.0004 of a share without anything breaking.',
+    a: 'Tiny, and deliberately so. A common cache is a few cents of notional; a mythic runs into the tens of dollars. Stock Tokens are divisible to 18 decimals, so a cache can hold 0.0004 of a share without anything breaking.',
   },
   {
     q: 'Can I just read the map data and teleport to the loot?',

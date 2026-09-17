@@ -452,8 +452,8 @@ function drawProp(
         sx,
         sy: sy - hgt * 0.55,
         color: '#41f5ff',
-        radius: 70,
-        strength: 0.5,
+        radius: 44,
+        strength: 0.26,
         flicker: 0.08,
       });
       // Aircraft warning beacon.
@@ -1220,11 +1220,14 @@ export class LodeRenderer {
     ctx.restore();
   }
 
-  /** Low-angle sun shafts. Only meaningful around dawn and dusk. */
+  /** Low-angle sun shafts. Dawn and dusk only — never after dark. */
   private drawSunShafts(state: RenderState, grade: DayGrade): void {
     const { ctx } = this;
     const warmth = grade.bloomAlpha;
     if (warmth < 0.14) return;
+    // Fade out as the emissive (night) pass takes over.
+    const daylight = clamp01(1 - (grade.emissive - 0.25) / 0.4);
+    if (daylight <= 0.02) return;
     ctx.save();
     ctx.globalCompositeOperation = 'screen';
     const originX = this.vw * 0.22;
@@ -1236,7 +1239,7 @@ export class LodeRenderer {
       const ex = originX + Math.cos(ang) * len;
       const ey = originY + Math.sin(ang) * len;
       const g = ctx.createLinearGradient(originX, originY, ex, ey);
-      const a = (0.055 + (i % 2) * 0.03) * (warmth / 0.3);
+      const a = (0.055 + (i % 2) * 0.03) * (warmth / 0.3) * daylight;
       g.addColorStop(0, `rgba(255,226,170,${a})`);
       g.addColorStop(0.55, `rgba(255,196,120,${a * 0.5})`);
       g.addColorStop(1, 'rgba(255,180,90,0)');

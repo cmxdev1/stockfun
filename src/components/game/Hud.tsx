@@ -39,6 +39,7 @@ export function TopBar({
   live,
   altitude,
   richness,
+  slot,
 }: {
   handle: string;
   level: number;
@@ -51,12 +52,14 @@ export function TopBar({
   live: boolean;
   altitude: number;
   richness: number;
+  /** Rendered next to the identity card — the prospector record menu. */
+  slot?: React.ReactNode;
 }) {
   const pct = Math.min(100, Math.max(0, (xp / Math.max(1, xpToNext)) * 100));
 
   return (
     <div className="pointer-events-auto flex items-start justify-between gap-3 p-3 sm:p-4">
-      <div className="glass flex items-center gap-3 rounded-2xl px-3 py-2.5">
+      <div className="glass flex min-w-0 items-center gap-3 rounded-2xl px-3 py-2.5">
         <Link href="/" aria-label="Back to the landing page" className="shrink-0">
           <LodeMark size={26} />
         </Link>
@@ -67,13 +70,14 @@ export function TopBar({
               LVL {level}
             </span>
           </div>
-          <div className="mt-1.5 h-1 w-32 overflow-hidden rounded-full bg-hairline sm:w-44">
+          <div className="mt-1.5 h-1 w-24 overflow-hidden rounded-full bg-hairline sm:w-40">
             <div
               className="h-full rounded-full bg-gradient-to-r from-cyan to-violet transition-[width] duration-500"
               style={{ width: `${pct}%` }}
             />
           </div>
         </div>
+        {slot}
       </div>
 
       <div className="glass hidden min-w-0 items-center gap-4 rounded-2xl px-4 py-2.5 md:flex">
@@ -97,13 +101,13 @@ export function TopBar({
         />
       </div>
 
-      <div className="glass flex items-center gap-3 rounded-2xl px-3 py-2.5">
-        <div className="hidden sm:block">
+      <div className="glass flex shrink-0 items-center gap-3 rounded-2xl px-3 py-2.5">
+        <div className="hidden lg:block">
           <div className="mono text-[9px] uppercase tracking-[0.2em] text-ink-mute">Sky</div>
           <div className="mono text-[12px] text-ink-dim">{dayLabel}</div>
         </div>
-        <span className="hidden h-7 w-px bg-hairline sm:block" />
-        <div>
+        <span className="hidden h-7 w-px bg-hairline lg:block" />
+        <div className="hidden sm:block">
           <div className="mono text-[9px] uppercase tracking-[0.2em] text-ink-mute">Epoch</div>
           <div className="mono text-[12px] text-ink-dim">#{epoch}</div>
         </div>
@@ -119,7 +123,8 @@ export function TopBar({
             className="h-1.5 w-1.5 rounded-full"
             style={{ background: 'currentColor', boxShadow: '0 0 8px currentColor' }}
           />
-          {live ? 'vault live' : 'demo vault'}
+          <span className="hidden sm:inline">{live ? 'vault live' : 'demo vault'}</span>
+          <span className="sm:hidden">{live ? 'live' : 'demo'}</span>
         </span>
       </div>
     </div>
@@ -162,7 +167,7 @@ export function SignalPanel({
   }, [signals, player.x, player.y]);
 
   return (
-    <div className="glass pointer-events-auto flex w-[264px] flex-col overflow-hidden rounded-2xl">
+    <div className="glass pointer-events-auto hidden w-[264px] flex-col overflow-hidden rounded-2xl sm:flex">
       <div className="flex items-center justify-between border-b border-hairline px-4 py-3">
         <span className="mono text-[10px] uppercase tracking-[0.2em] text-ink-mute">Signals</span>
         <span className="mono text-[10px] text-cyan">
@@ -224,10 +229,13 @@ export function SignalPanel({
 export function AgentPanel({
   agent,
   onToggleAutonomy,
+  onTune,
   distance,
 }: {
   agent: AgentConfig;
   onToggleAutonomy: () => void;
+  /** Live retuning — the agent reacts on the next target it picks. */
+  onTune: (patch: Partial<AgentConfig>) => void;
   distance: number;
 }) {
   const color = `hsl(${agent.hue}, 95%, 66%)`;
@@ -254,9 +262,19 @@ export function AgentPanel({
         </div>
       </div>
 
-      <div className="space-y-2.5 px-4 py-3">
-        <Meter label="Range" value={agent.range} color={color} />
-        <Meter label="Greed" value={agent.greed} color={color} />
+      <div className="space-y-3 px-4 py-3">
+        <Dial
+          label="Range"
+          value={agent.range}
+          color={color}
+          onChange={(v) => onTune({ range: v })}
+        />
+        <Dial
+          label="Greed"
+          value={agent.greed}
+          color={color}
+          onChange={(v) => onTune({ greed: v })}
+        />
         <div className="mono flex justify-between text-[10px] uppercase tracking-[0.14em] text-ink-mute">
           <span>Tether</span>
           <span className={distance > 24 ? 'text-gold' : 'text-ink-dim'}>
@@ -289,20 +307,41 @@ export function AgentPanel({
   );
 }
 
-function Meter({ label, value, color }: { label: string; value: number; color: string }) {
+function Dial({
+  label,
+  value,
+  color,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  color: string;
+  onChange: (v: number) => void;
+}) {
   return (
-    <div>
-      <div className="mono mb-1 flex justify-between text-[10px] uppercase tracking-[0.14em] text-ink-mute">
+    <label className="block cursor-pointer">
+      <span className="mono mb-1 flex justify-between text-[10px] uppercase tracking-[0.14em] text-ink-mute">
         <span>{label}</span>
-        <span>{Math.round(value * 100)}</span>
-      </div>
-      <div className="h-1 overflow-hidden rounded-full bg-hairline">
-        <div
-          className="h-full rounded-full"
-          style={{ width: `${value * 100}%`, background: color, boxShadow: `0 0 10px ${color}` }}
+        <span style={{ color }}>{Math.round(value * 100)}</span>
+      </span>
+      <span className="relative block">
+        <span className="block h-1 overflow-hidden rounded-full bg-hairline">
+          <span
+            className="block h-full rounded-full"
+            style={{ width: `${value * 100}%`, background: color, boxShadow: `0 0 10px ${color}` }}
+          />
+        </span>
+        <input
+          type="range"
+          min={0}
+          max={100}
+          value={Math.round(value * 100)}
+          onChange={(e) => onChange(Number(e.target.value) / 100)}
+          aria-label={label}
+          className="absolute inset-0 h-full w-full opacity-0"
         />
-      </div>
-    </div>
+      </span>
+    </label>
   );
 }
 
@@ -372,7 +411,7 @@ export function ActionBar({
 
   return (
     <div className="pointer-events-auto flex items-end justify-center gap-3 pb-4 sm:gap-4 sm:pb-6">
-      <div className="glass flex items-center gap-1 rounded-full p-1">
+      <div className="glass hidden items-center gap-1 rounded-full p-1 sm:flex">
         <IconButton label="Zoom out" onClick={() => onZoom(-1)}>
           −
         </IconButton>
@@ -531,6 +570,72 @@ export function KeyLegend() {
           </div>
         ))}
       </dl>
+    </div>
+  );
+}
+
+
+/* ------------------------------------------------------------------ *
+ * Phone signal strip
+ * ------------------------------------------------------------------ */
+
+/**
+ * On a phone the vertical signal board eats the whole screen, so the same
+ * information becomes a horizontally scrollable strip above the action bar.
+ */
+export function SignalStrip({
+  signals,
+  player,
+  focusId,
+  onTrack,
+}: {
+  signals: CacheSignal[];
+  player: Vec2;
+  focusId: string | null;
+  onTrack: (s: CacheSignal) => void;
+}) {
+  const rows = signals
+    .filter((s) => !s.claimed)
+    .map((s) => ({ s, d: Math.hypot(s.x - player.x, s.y - player.y) }))
+    .sort((a, b) => a.d - b.d)
+    .slice(0, 8);
+
+  if (rows.length === 0) {
+    return (
+      <div className="glass mono pointer-events-auto rounded-full px-4 py-2 text-[11px] text-ink-mute">
+        No signals — tap SCAN
+      </div>
+    );
+  }
+
+  return (
+    <div className="pointer-events-auto flex w-full gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      {rows.map(({ s, d }) => {
+        const r = RARITIES[s.rarity];
+        const active = focusId === s.id;
+        return (
+          <button
+            key={s.id}
+            type="button"
+            onClick={() => onTrack(s)}
+            className={`glass flex shrink-0 items-center gap-2 rounded-full py-1.5 pl-2 pr-3 transition-colors ${
+              active ? 'bg-white/[0.08]' : ''
+            }`}
+            style={active ? { boxShadow: `0 0 0 1px ${r.color}` } : undefined}
+          >
+            <span
+              className="h-2 w-2 rounded-full"
+              style={{ background: r.color, boxShadow: `0 0 10px ${r.glow}` }}
+            />
+            <span className="mono text-[10px] uppercase tracking-[0.12em]" style={{ color: r.color }}>
+              {r.label}
+            </span>
+            <span className="mono text-[10px] text-ink-mute">
+              {d < 1.5 ? 'here' : `${Math.round(d)}m`}
+            </span>
+          </button>
+        );
+      })}
     </div>
   );
 }
