@@ -71,7 +71,7 @@ export function GameClient() {
   const [phase, setPhase] = useState<'boot' | 'onboarding' | 'loading' | 'playing'>('boot');
   const [profile, setProfile] = useState<PlayerProfile | null>(null);
   const [spawn, setSpawn] = useState<Vec2>({ x: 0, y: 0 });
-  const [epoch, setEpoch] = useState(0);
+  const [epoch, setEpochState] = useState(0);
   const [live, setLive] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -83,12 +83,20 @@ export function GameClient() {
   const [hud, setHud] = useState<HudSnapshot | null>(null);
   const [explorerBase, setExplorerBase] = useState('https://robinhoodchain.blockscout.com');
 
+  // The render loop is created once, so it must read the epoch through a ref —
+  // a reseed mid-session would otherwise leave it solving against a dead epoch.
+  const setEpoch = useCallback((value: number) => {
+    epochRef.current = value;
+    setEpochState(value);
+  }, []);
+
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const engineRef = useRef<LodeEngine | null>(null);
   const rendererRef = useRef<LodeRenderer | null>(null);
   const credsRef = useRef<Credentials | null>(null);
   const logSeq = useRef(0);
   const toggleAutonomyRef = useRef<() => void>(() => {});
+  const epochRef = useRef(0);
   const powRef = useRef<{ cacheId: string; cursor: number; nonce: number | null } | null>(null);
   const pendingClaim = useRef<CacheSignal | null>(null);
   const claiming = useRef(false);
@@ -340,7 +348,7 @@ export function GameClient() {
           const slice = solvePowSlice(
             pow.cacheId,
             credsRef.current?.playerId ?? '',
-            epoch,
+            epochRef.current,
             RARITIES[mining.signal.rarity].difficulty,
             pow.cursor,
             14_000,
@@ -358,7 +366,7 @@ export function GameClient() {
             const slice = solvePowSlice(
               pow.cacheId,
               credsRef.current?.playerId ?? '',
-              epoch,
+              epochRef.current,
               RARITIES[pending.rarity].difficulty,
               pow.cursor,
               60_000,
@@ -426,6 +434,9 @@ export function GameClient() {
    * Input
    * ---------------------------------------------------------------- */
 
+  const revealRef = useRef(false);
+  revealRef.current = reveal !== null;
+
   useEffect(() => {
     if (phase !== 'playing') return;
 
@@ -443,6 +454,13 @@ export function GameClient() {
     const onKeyDown = (e: KeyboardEvent) => {
       const engine = engineRef.current;
       if (!engine) return;
+      // The reveal owns the keyboard while it is up.
+      if (revealRef.current) {
+        for (const axis of Object.keys(engine.input) as Array<keyof LodeEngine['input']>) {
+          engine.input[axis] = false;
+        }
+        return;
+      }
       const k = e.key.toLowerCase();
       if (keyMap[k]) {
         engine.input[keyMap[k]] = true;
@@ -504,6 +522,8 @@ export function GameClient() {
     engineRef.current?.nudgeZoom(e.deltaY);
   }, []);
 
+  const dismissReveal = useCallback(() => setReveal(null), []);
+
   /** Clear the local session and go back through onboarding with a new wallet. */
   const switchWallet = useCallback(() => {
     try {
@@ -556,6 +576,10 @@ export function GameClient() {
   useEffect(() => {
     toggleAutonomyRef.current = toggleAutonomy;
   }, [toggleAutonomy]);
+
+  useEffect(() => {
+    engineRef.current?.setLevel(levelFromXp(xp));
+  }, [xp]);
 
   /* ---------------------------------------------------------------- *
    * Render
@@ -697,7 +721,7 @@ export function GameClient() {
         </div>
       )}
 
-      {reveal && <RevealModal result={reveal} onClose={() => setReveal(null)} />}
+      {reveal && <RevealModal result={reveal} onClose={dismissReveal} />}
     </div>
   );
 }

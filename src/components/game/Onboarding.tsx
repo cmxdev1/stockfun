@@ -29,10 +29,10 @@ const ARCHETYPES: Array<{
   perk: string;
   blurb: string;
 }> = [
-  { id: 'scout', name: 'Scout', hue: 190, perk: '+25% speed', blurb: 'Ranges wide, charts fast.' },
+  { id: 'scout', name: 'Scout', hue: 190, perk: '1.25× speed', blurb: 'Ranges wide, charts fast.' },
   { id: 'digger', name: 'Digger', hue: 38, perk: '1.45× dig rate', blurb: 'Chews through hard ground.' },
-  { id: 'oracle', name: 'Oracle', hue: 272, perk: 'Rarity bias', blurb: 'Walks past commons for one legendary.' },
-  { id: 'drifter', name: 'Drifter', hue: 150, perk: 'Vein seeking', blurb: 'Never idles — hunts richness.' },
+  { id: 'oracle', name: 'Oracle', hue: 272, perk: '+0.35 rarity bias', blurb: 'Walks past commons for one legendary.' },
+  { id: 'drifter', name: 'Drifter', hue: 150, perk: '1.9× wander', blurb: 'Never idles — hunts richness.' },
 ];
 
 const NAME_PARTS_A = ['Kes', 'Bram', 'Vor', 'Lux', 'Nyx', 'Ori', 'Sable', 'Quill', 'Ash', 'Rune'];

@@ -1,5 +1,5 @@
 import { BIOMES, BIOME_ORDER } from '@/game/world';
-import { RARITIES, RARITY_ORDER } from '@/game/drops';
+import { notionalRange, RARITIES, RARITY_ORDER } from '@/game/drops';
 import { STOCKS, formatUsd } from '@/lib/stocks';
 import { WorldBackdrop } from '@/components/WorldBackdrop';
 import {
@@ -135,8 +135,7 @@ export function Loot() {
           </div>
           {RARITY_ORDER.map((id) => {
             const r = RARITIES[id];
-            const low = 0.06 * r.valueMultiplier * 0.55;
-            const high = 0.06 * r.valueMultiplier * 1.45 * 1.3;
+            const { low, high } = notionalRange(id);
             return (
               <div
                 key={id}
@@ -216,14 +215,14 @@ const ARCHETYPES = [
     hue: 190,
     tagline: 'Fast, wide, restless.',
     body: 'Moves 25% quicker and ranges furthest from you. Best when you want the map opened up and every signal in a sector tagged before you commit.',
-    perk: '+25% move speed · widest leash',
+    perk: '1.25× speed · 1.5× leash',
   },
   {
     id: 'digger',
     name: 'Digger',
     hue: 38,
     tagline: 'Built for the hard ground.',
-    body: 'Cuts excavation time by nearly half. Epics and legendaries that would stall a scout come out clean. Slower across open terrain — you trade tempo for depth.',
+    body: 'Excavates 45% faster, so epics and legendaries that would stall a scout come out clean. Slower across open terrain and on a shorter leash — you trade tempo for depth.',
     perk: '1.45× excavation rate',
   },
   {
@@ -231,16 +230,16 @@ const ARCHETYPES = [
     name: 'Oracle',
     hue: 272,
     tagline: 'Reads the substrate.',
-    body: 'Biases hard toward rarity when choosing what to chase. Pair it with high greed and it will walk past a dozen commons to sit on one legendary signal.',
-    perk: 'Rarity-weighted target selection',
+    body: 'Adds a standing rarity bias on top of whatever greed you dial in. Pair it with a high setting and it will walk past a dozen commons to sit on one legendary signal.',
+    perk: '+0.35 standing rarity bias',
   },
   {
     id: 'drifter',
     name: 'Drifter',
     hue: 150,
     tagline: 'Never stops wandering.',
-    body: 'When the board is empty it hunts the richest mineral veins instead of idling, quietly charting new chunks while you handle the caches you already found.',
-    perk: 'Vein-seeking idle behaviour',
+    body: 'When the board is empty it ranges almost twice as wide as anything else, hunting the richest mineral veins and quietly charting new chunks while you handle the caches you already found.',
+    perk: '1.9× idle wander radius',
   },
 ];
 

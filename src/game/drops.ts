@@ -99,6 +99,24 @@ function pickTicker(rng: () => number, rarity: Rarity): string {
   return scored[0].ticker;
 }
 
+/** Multipliers applied on top of the rarity value, as `cacheAt` rolls them. */
+const SPREAD_MIN = 0.55;
+const SPREAD_MAX = 1.45;
+const RICHNESS_MIN = 0.7;
+const RICHNESS_MAX = 1.3;
+
+/**
+ * USD notional a tier can hold, derived from the same constants the spawn
+ * table uses — so the published loot table cannot drift from the real one.
+ */
+export function notionalRange(rarity: Rarity): { low: number; high: number } {
+  const base = BASE_NOTIONAL_USD * RARITIES[rarity].valueMultiplier;
+  return {
+    low: base * SPREAD_MIN * RICHNESS_MIN,
+    high: base * SPREAD_MAX * RICHNESS_MAX,
+  };
+}
+
 export function cacheId(x: number, y: number, epoch: number): string {
   return `c${epoch}.${x}.${y}`;
 }
@@ -135,9 +153,10 @@ export function cacheAt(
   const ticker = pickTicker(rng, rarity);
   const stock = STOCKS.find((s) => s.ticker === ticker)!;
 
-  const spread = 0.55 + rng() * 0.9;
+  const spread = SPREAD_MIN + rng() * (SPREAD_MAX - SPREAD_MIN);
+  const richnessFactor = RICHNESS_MIN + tile.richness * (RICHNESS_MAX - RICHNESS_MIN);
   const notionalUsd =
-    BASE_NOTIONAL_USD * RARITIES[rarity].valueMultiplier * spread * (0.7 + tile.richness * 0.6);
+    BASE_NOTIONAL_USD * RARITIES[rarity].valueMultiplier * spread * richnessFactor;
   const fragment = notionalUsd / stock.refPrice;
 
   return {

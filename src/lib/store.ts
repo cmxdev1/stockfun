@@ -26,6 +26,8 @@ export interface ClaimRecord {
   txHash: string;
   simulated: boolean;
   claimedAt: number;
+  /** True between reservation and payout. Pending rows never score. */
+  pending?: boolean;
 }
 
 export interface WorldMeta {
@@ -171,6 +173,15 @@ export async function claimsSince(id: string, windowMs: number): Promise<number>
   return db.claims.filter((c) => c.playerId === id && c.claimedAt >= cutoff).length;
 }
 
+/** Sweep reservations that never settled (a crash between reserve and payout). */
+export async function expireStaleReservations(maxAgeMs = 60_000): Promise<void> {
+  const db = await read();
+  const cutoff = Date.now() - maxAgeMs;
+  const before = db.claims.length;
+  db.claims = db.claims.filter((c) => !c.pending || c.claimedAt >= cutoff);
+  if (db.claims.length !== before) await write(db);
+}
+
 export async function updateAgent(id: string, agent: AgentConfig): Promise<PlayerProfile | null> {
   const db = await read();
   const profile = db.profiles[id];
@@ -193,10 +204,40 @@ export async function claimedIdsIn(ids: string[]): Promise<Set<string>> {
   return out;
 }
 
-export async function recordClaim(record: ClaimRecord): Promise<void> {
+/**
+ * Reserve a cache before the vault is asked for anything.
+ *
+ * Without this, two requests for the same cache can both pass the "is it
+ * claimed?" check and both trigger a transfer. Reserving first closes that
+ * window: the check and the insert happen with no await between them, so
+ * within a process they are atomic. A multi-instance deployment should back
+ * this with a unique constraint on `cacheId` instead.
+ */
+export async function reserveClaim(
+  record: Omit<ClaimRecord, 'pending'>,
+): Promise<{ ok: boolean; existing?: ClaimRecord }> {
   const db = await read();
-  if (db.claims.some((c) => c.cacheId === record.cacheId)) return;
-  db.claims.push(record);
+  const existing = db.claims.find((c) => c.cacheId === record.cacheId);
+  if (existing) return { ok: false, existing };
+  db.claims.push({ ...record, pending: true });
+  // Persist in the background; the in-memory reservation already holds.
+  void write(db);
+  return { ok: true };
+}
+
+/** Promote a reservation to a settled claim and credit the prospector. */
+export async function settleClaim(
+  cacheId: string,
+  txHash: string,
+  simulated: boolean,
+): Promise<void> {
+  const db = await read();
+  const record = db.claims.find((c) => c.cacheId === cacheId);
+  if (!record || !record.pending) return;
+  record.pending = false;
+  record.txHash = txHash;
+  record.simulated = simulated;
+  record.claimedAt = Date.now();
 
   const profile = db.profiles[record.playerId];
   if (profile) {
@@ -204,6 +245,15 @@ export async function recordClaim(record: ClaimRecord): Promise<void> {
     profile.notionalUsd = Number((profile.notionalUsd + record.notionalUsd).toFixed(4));
     profile.xp += xpForClaim(record.rarity);
   }
+  await write(db);
+}
+
+/** Give a cache back when the payout never happened. */
+export async function releaseClaim(cacheId: string): Promise<void> {
+  const db = await read();
+  const i = db.claims.findIndex((c) => c.cacheId === cacheId && c.pending);
+  if (i === -1) return;
+  db.claims.splice(i, 1);
   await write(db);
 }
 
@@ -224,7 +274,10 @@ export function xpForClaim(rarity: Rarity): number {
 
 export async function recentClaims(limit = 24): Promise<ClaimRecord[]> {
   const db = await read();
-  return [...db.claims].sort((a, b) => b.claimedAt - a.claimedAt).slice(0, limit);
+  return db.claims
+    .filter((c) => !c.pending)
+    .sort((a, b) => b.claimedAt - a.claimedAt)
+    .slice(0, limit);
 }
 
 export interface LeaderRow {
@@ -261,10 +314,11 @@ export async function leaderboard(limit = 20): Promise<LeaderRow[]> {
 
 export async function globalStats() {
   const db = await read();
-  const claimedUsd = db.claims.reduce((a, c) => a + c.notionalUsd, 0);
+  const settled = db.claims.filter((c) => !c.pending);
+  const claimedUsd = settled.reduce((a, c) => a + c.notionalUsd, 0);
   return {
     prospectors: Object.keys(db.profiles).length,
-    claims: db.claims.length,
+    claims: settled.length,
     claimedUsd: Number(claimedUsd.toFixed(2)),
     seededUsd: db.world.seededUsd,
     epoch: db.world.epoch,

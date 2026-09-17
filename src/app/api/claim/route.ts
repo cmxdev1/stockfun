@@ -5,10 +5,13 @@ import { verifyPow } from '@/lib/pow';
 import {
   checkAndRecordPosition,
   claimsSince,
+  expireStaleReservations,
   getProfile,
   getWorld,
   isCacheClaimed,
-  recordClaim,
+  releaseClaim,
+  reserveClaim,
+  settleClaim,
   verifySecret,
   xpForClaim,
 } from '@/lib/store';
@@ -94,8 +97,33 @@ export async function POST(req: Request) {
     );
   }
 
+  await expireStaleReservations();
+
   const already = await isCacheClaimed(cacheId);
   if (already) {
+    return NextResponse.json(
+      { ok: false, error: 'Someone got here first — this cache is empty.' },
+      { status: 409 },
+    );
+  }
+
+  // Reserve before asking the vault for anything: two requests racing for the
+  // same cache must not both trigger a transfer.
+  const reservation = await reserveClaim({
+    cacheId,
+    playerId,
+    wallet: profile.wallet,
+    ticker: cache.ticker,
+    fragment: cache.fragment,
+    notionalUsd: cache.notionalUsd,
+    rarity: cache.rarity,
+    x: cache.x,
+    y: cache.y,
+    txHash: '',
+    simulated: false,
+    claimedAt: Date.now(),
+  });
+  if (!reservation.ok) {
     return NextResponse.json(
       { ok: false, error: 'Someone got here first — this cache is empty.' },
       { status: 409 },
@@ -110,26 +138,15 @@ export async function POST(req: Request) {
   );
 
   if (payout.error) {
+    // The vault never moved anything — hand the cache back to the map.
+    await releaseClaim(cacheId);
     return NextResponse.json(
       { ok: false, error: `Vault transfer failed: ${payout.error}` },
       { status: 502 },
     );
   }
 
-  await recordClaim({
-    cacheId,
-    playerId,
-    wallet: profile.wallet,
-    ticker: cache.ticker,
-    fragment: cache.fragment,
-    notionalUsd: cache.notionalUsd,
-    rarity: cache.rarity,
-    x: cache.x,
-    y: cache.y,
-    txHash: payout.txHash,
-    simulated: payout.simulated,
-    claimedAt: Date.now(),
-  });
+  await settleClaim(cacheId, payout.txHash, payout.simulated);
 
   return NextResponse.json({
     ok: true,

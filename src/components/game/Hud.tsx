@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useMemo } from 'react';
 import { LodeMark } from '@/components/ui/Logo';
-import { RARITIES } from '@/game/drops';
+import { RARITIES, tileDistance } from '@/game/drops';
 import { sectorName } from '@/game/world';
 import { colorOf, formatFragment, formatUsd } from '@/lib/stocks';
 import type { AgentConfig, BiomeStyle, CacheSignal, Vec2 } from '@/game/types';
@@ -144,6 +144,28 @@ function Readout({ label, value, tone }: { label: string; value: string; tone?: 
  * Signal list
  * ------------------------------------------------------------------ */
 
+/**
+ * Rank open signals by distance.
+ *
+ * `reach` deliberately uses the same metric the claim server enforces —
+ * Chebyshev distance between the tile the prospector stands on and the cache
+ * tile — so the board can never say "in reach" while the dig button says there
+ * is nothing there. The displayed distance measures to the tile centre, which
+ * is where the beacon is actually drawn.
+ */
+function rankSignals(signals: CacheSignal[], player: Vec2) {
+  const px = Math.floor(player.x);
+  const py = Math.floor(player.y);
+  return signals
+    .filter((s) => !s.claimed)
+    .map((s) => ({
+      s,
+      d: Math.hypot(s.x + 0.5 - player.x, s.y + 0.5 - player.y),
+      reach: tileDistance(px, py, s.x, s.y) <= 1,
+    }))
+    .sort((a, b) => a.d - b.d);
+}
+
 export function SignalPanel({
   signals,
   player,
@@ -158,11 +180,7 @@ export function SignalPanel({
   scanning: boolean;
 }) {
   const rows = useMemo(() => {
-    return signals
-      .filter((s) => !s.claimed)
-      .map((s) => ({ s, d: Math.hypot(s.x - player.x, s.y - player.y) }))
-      .sort((a, b) => a.d - b.d)
-      .slice(0, 9);
+    return rankSignals(signals, player).slice(0, 9);
     // Recomputing on every player tick is fine — the list is at most 9 rows.
   }, [signals, player.x, player.y]);
 
@@ -182,7 +200,7 @@ export function SignalPanel({
             Run a sweep — <span className="mono text-cyan">SPACE</span>
           </div>
         )}
-        {rows.map(({ s, d }) => {
+        {rows.map(({ s, d, reach }) => {
           const r = RARITIES[s.rarity];
           const active = focusId === s.id;
           return (
@@ -208,11 +226,7 @@ export function SignalPanel({
                 <span className="block truncate text-[12px] text-ink-dim">{s.sector}</span>
               </span>
               <span className="mono shrink-0 text-right text-[11px] text-ink-mute">
-                {d < 1.5 ? (
-                  <span className="text-mint">in reach</span>
-                ) : (
-                  `${Math.round(d)}m`
-                )}
+                {reach ? <span className="text-mint">in reach</span> : `${Math.round(d)}m`}
               </span>
             </button>
           );
@@ -594,11 +608,7 @@ export function SignalStrip({
   focusId: string | null;
   onTrack: (s: CacheSignal) => void;
 }) {
-  const rows = signals
-    .filter((s) => !s.claimed)
-    .map((s) => ({ s, d: Math.hypot(s.x - player.x, s.y - player.y) }))
-    .sort((a, b) => a.d - b.d)
-    .slice(0, 8);
+  const rows = rankSignals(signals, player).slice(0, 8);
 
   if (rows.length === 0) {
     return (
@@ -610,7 +620,7 @@ export function SignalStrip({
 
   return (
     <div className="pointer-events-auto flex w-full gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-      {rows.map(({ s, d }) => {
+      {rows.map(({ s, d, reach }) => {
         const r = RARITIES[s.rarity];
         const active = focusId === s.id;
         return (
@@ -631,7 +641,7 @@ export function SignalStrip({
               {r.label}
             </span>
             <span className="mono text-[10px] text-ink-mute">
-              {d < 1.5 ? 'here' : `${Math.round(d)}m`}
+              {reach ? 'here' : `${Math.round(d)}m`}
             </span>
           </button>
         );

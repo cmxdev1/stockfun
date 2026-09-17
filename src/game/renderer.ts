@@ -220,8 +220,6 @@ const K_TOP = 1.0;
 const K_LEFT = 0.60;
 const K_RIGHT = 0.35;
 
-const FOG: Rgb = { r: 168, g: 184, b: 214 };
-
 function propHeight(prop: PropId): number {
   switch (prop) {
     case 'tower':
@@ -598,7 +596,6 @@ function bakeChunk(cx: number, cy: number, seed: number, dpr: number): BakedChun
       const east = sampleTile(wx + 1, wy, seed);
       const dropL = Math.max(0, groundH - south.h);
       const dropR = Math.max(0, groundH - east.h);
-      const faceDepth = Math.max(dropL, dropR, tile.water > 0 ? 0 : 0);
 
       if (dropL > 0) {
         const hgt = dropL * LEVEL_H;
@@ -712,8 +709,6 @@ function bakeChunk(cx: number, cy: number, seed: number, dpr: number): BakedChun
       if (tile.prop !== 'none') {
         drawProp(ctx, tile.prop, sx, sy - 1, tile, tile.biome, seed, wx, wy, lights);
       }
-
-      void faceDepth;
     }
   }
 
@@ -993,13 +988,8 @@ export class LodeRenderer {
     // ...but paint back-to-front.
     const paintOrder = [...list].sort((a, b) => a.cx + a.cy - (b.cx + b.cy));
 
-    const wanted = new Set<string>();
     for (const { cx, cy } of list) {
-      const key = chunkKey(cx, cy);
-      wanted.add(key);
-      const discoveredAt = state.discovered.get(key);
-      if (discoveredAt === undefined) continue;
-      this.getChunk(cx, cy, budget);
+      if (state.discovered.has(chunkKey(cx, cy))) this.getChunk(cx, cy, budget);
     }
 
     for (const { cx, cy } of paintOrder) {
@@ -1859,4 +1849,4 @@ export function weatherFor(biome: BiomeId): RenderState['weather'] {
   }
 }
 
-export { fbm2, clamp01, FOG };
+export { fbm2, clamp01 };

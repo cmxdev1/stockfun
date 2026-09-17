@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { RARITIES } from '@/game/drops';
 import { colorOf, formatFragment, formatUsd, stockByTicker } from '@/lib/stocks';
 import type { ClaimResult } from '@/game/types';
@@ -14,16 +14,24 @@ export function RevealModal({
   result: ClaimResult;
   onClose: () => void;
 }) {
+  // Attach once and dispatch through a ref. Re-registering on every parent
+  // render would let a mid-dispatch cleanup remove this listener before the
+  // browser reaches it — the DOM never calls a listener removed during the
+  // same event — and the dismiss key would silently stop working.
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
-        onClose();
+        e.stopPropagation();
+        closeRef.current();
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
+  }, []);
 
   const rarity = RARITIES[result.rarity ?? 'common'];
   const stock = stockByTicker(result.ticker ?? '');

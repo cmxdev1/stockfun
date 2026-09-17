@@ -20,7 +20,7 @@ import {
   surfaceHeight,
   WORLD,
 } from './world';
-import type { AgentConfig, CacheSignal, Vec2 } from './types';
+import type { AgentArchetype, AgentConfig, CacheSignal, Vec2 } from './types';
 
 export interface EngineCallbacks {
   onScan: (x: number, y: number) => void;
@@ -39,6 +39,20 @@ export interface EngineOptions {
 
 const WALK_SPEED = 4.6; // tiles / second
 const AGENT_SPEED = 6.4;
+
+/**
+ * Archetype traits. Every line the landing page claims about an archetype is
+ * one of these numbers — keep the two in step.
+ */
+const TRAITS: Record<
+  AgentArchetype,
+  { speed: number; leash: number; dig: number; rarityBias: number; wander: number }
+> = {
+  scout: { speed: 1.25, leash: 1.5, dig: 1, rarityBias: 0, wander: 1 },
+  digger: { speed: 0.92, leash: 0.85, dig: 1.45, rarityBias: 0, wander: 0.7 },
+  oracle: { speed: 1, leash: 1.1, dig: 1, rarityBias: 0.35, wander: 0.85 },
+  drifter: { speed: 1.05, leash: 1.25, dig: 1, rarityBias: 0, wander: 1.9 },
+};
 const DISCOVER_RADIUS = 3.1; // in chunks
 const SCAN_COOLDOWN = 6.5;
 const SCAN_RADIUS = 26;
@@ -207,6 +221,11 @@ export class LodeEngine {
     }
   }
 
+  /** Keep the world nameplate in step with the XP the server has credited. */
+  setLevel(level: number): void {
+    this.level = level;
+  }
+
   markClaimed(id: string): void {
     const s = this.signals.find((x) => x.id === id);
     if (s) s.claimed = true;
@@ -347,7 +366,7 @@ export class LodeEngine {
     const dx = target.x - this.agent.x;
     const dy = target.y - this.agent.y;
     const dist = Math.hypot(dx, dy);
-    const speed = AGENT_SPEED * (cfg.archetype === 'scout' ? 1.25 : 1);
+    const speed = AGENT_SPEED * TRAITS[cfg.archetype].speed;
     if (dist > 0.05) {
       const stepLen = Math.min(dist, speed * dt);
       this.agent.x += (dx / dist) * stepLen;
@@ -355,7 +374,7 @@ export class LodeEngine {
     }
 
     // Drift back if the agent strays past its leash.
-    const leash = 6 + cfg.range * 26;
+    const leash = (6 + cfg.range * 26) * TRAITS[cfg.archetype].leash;
     const fromPlayer = Math.hypot(this.agent.x - this.player.x, this.agent.y - this.player.y);
     if (fromPlayer > leash) {
       this.agentTarget = follow;
@@ -376,10 +395,12 @@ export class LodeEngine {
     if (open.length > 0) {
       let best: CacheSignal | null = null;
       let bestScore = -Infinity;
+      // An oracle weighs rarity on top of whatever greed the player dialled in.
+      const greed = Math.min(1, cfg.greed + TRAITS[cfg.archetype].rarityBias);
       for (const s of open) {
         const dist = Math.hypot(s.x - this.player.x, s.y - this.player.y);
         const rarityScore = RARITIES[s.rarity].difficulty / 5;
-        const score = rarityScore * cfg.greed * 3 - (dist / 40) * (1 - cfg.greed * 0.6);
+        const score = rarityScore * greed * 3 - (dist / 40) * (1 - greed * 0.6);
         if (score > bestScore) {
           bestScore = score;
           best = s;
@@ -400,8 +421,9 @@ export class LodeEngine {
       }
     }
 
-    // Nothing on the board: wander the richest ground within the leash.
-    const radius = 5 + cfg.range * 20;
+    // Nothing on the board: wander the richest ground within the leash. A
+    // drifter ranges far enough to keep charting new chunks; a digger stays put.
+    const radius = (5 + cfg.range * 20) * TRAITS[cfg.archetype].wander;
     let best = { x: this.player.x, y: this.player.y };
     let bestRichness = -1;
     for (let i = 0; i < 24; i++) {
@@ -430,7 +452,7 @@ export class LodeEngine {
     }
     // Passive drill progress; striking accelerates it.
     const diff = RARITIES[s.rarity].difficulty;
-    const assist = this.agentConfig.archetype === 'digger' ? 1.45 : 1;
+    const assist = TRAITS[this.agentConfig.archetype].dig;
     this.mining.progress += (dt / (2.2 + diff * 1.5)) * assist;
     if (this.rng() < dt * 22) this.spawnChips(s, 1);
     if (this.mining.progress >= 1) {
