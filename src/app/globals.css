@@ -1,0 +1,255 @@
+@import 'tailwindcss';
+
+/* ------------------------------------------------------------------ *
+ * Design tokens — THE LODE
+ * Obsidian ground, aurora light, gold treasure.
+ * ------------------------------------------------------------------ */
+
+@theme {
+  --color-void: #04050c;
+  --color-obsidian: #070a16;
+  --color-panel: #0b1022;
+  --color-panel-2: #101733;
+  --color-hairline: #1d2748;
+
+  --color-ink: #e9eeff;
+  --color-ink-dim: #a7b6dc;
+  --color-ink-mute: #6d7ca4;
+
+  --color-gold: #ffc44d;
+  --color-gold-deep: #c98a18;
+  --color-cyan: #41f5ff;
+  --color-violet: #a06bff;
+  --color-mint: #6dffa8;
+  --color-rose: #ff5f8f;
+  --color-ember: #ff7a3d;
+
+  --font-display: var(--font-space-grotesk), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, 'SFMono-Regular', monospace;
+
+  --radius-xl2: 1.35rem;
+
+  --animate-drift: drift 26s linear infinite;
+  --animate-pulse-slow: pulseSlow 3.4s ease-in-out infinite;
+  --animate-shimmer: shimmer 2.6s linear infinite;
+  --animate-float: float 7s ease-in-out infinite;
+  --animate-marquee: marquee 42s linear infinite;
+  --animate-scanline: scanline 7s linear infinite;
+  --animate-rise: rise 0.7s cubic-bezier(0.2, 0.9, 0.2, 1) both;
+}
+
+@keyframes drift {
+  from { transform: translate3d(0, 0, 0); }
+  to { transform: translate3d(-50%, 0, 0); }
+}
+@keyframes pulseSlow {
+  0%, 100% { opacity: 0.45; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.06); }
+}
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-12px); }
+}
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+@keyframes scanline {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(1400%); }
+}
+@keyframes rise {
+  from { opacity: 0; transform: translateY(22px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes popIn {
+  0% { opacity: 0; transform: scale(0.82) translateY(14px); }
+  60% { opacity: 1; transform: scale(1.03) translateY(0); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+@keyframes ringOut {
+  0% { opacity: 0.9; transform: scale(0.4); }
+  100% { opacity: 0; transform: scale(2.4); }
+}
+
+/* ------------------------------------------------------------------ *
+ * Base
+ * ------------------------------------------------------------------ */
+
+* {
+  border-color: var(--color-hairline);
+}
+
+html {
+  scroll-behavior: smooth;
+  color-scheme: dark;
+}
+
+body {
+  background: var(--color-void);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow-x: hidden;
+}
+
+::selection {
+  background: color-mix(in oklab, var(--color-gold) 40%, transparent);
+  color: #fff;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-obsidian);
+}
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #23305c, #161f3d);
+  border-radius: 99px;
+  border: 2px solid var(--color-obsidian);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #34457f, #1e2a52);
+}
+
+/* ------------------------------------------------------------------ *
+ * Utilities
+ * ------------------------------------------------------------------ */
+
+@utility display {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+@utility mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+@utility eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--color-ink-mute);
+}
+
+/** Frosted panel with a hairline that catches the light at the top edge. */
+@utility glass {
+  position: relative;
+  background: linear-gradient(
+    168deg,
+    color-mix(in oklab, var(--color-panel) 92%, transparent),
+    color-mix(in oklab, var(--color-obsidian) 88%, transparent)
+  );
+  backdrop-filter: blur(18px) saturate(140%);
+  border: 1px solid color-mix(in oklab, var(--color-hairline) 90%, transparent);
+  box-shadow:
+    0 1px 0 0 rgb(255 255 255 / 0.05) inset,
+    0 24px 60px -30px rgb(0 0 0 / 0.9);
+}
+
+@utility glass-strong {
+  background: linear-gradient(168deg, #0d1226, #070a16);
+  backdrop-filter: blur(24px) saturate(150%);
+  border: 1px solid #1f2a50;
+  box-shadow:
+    0 1px 0 0 rgb(255 255 255 / 0.07) inset,
+    0 30px 80px -36px rgb(0 0 0 / 0.95);
+}
+
+/** Aurora text sweep used on the big display headlines. */
+@utility aurora-text {
+  background: linear-gradient(
+    100deg,
+    #fff 0%,
+    var(--color-cyan) 22%,
+    var(--color-violet) 44%,
+    var(--color-gold) 66%,
+    #fff 88%
+  );
+  background-size: 260% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: shimmer 7s linear infinite;
+}
+
+@utility gold-text {
+  background: linear-gradient(120deg, #fff3d0, var(--color-gold) 40%, #ffedb8 60%, var(--color-gold-deep));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+@utility grain {
+  position: relative;
+}
+
+@utility hairline-top {
+  box-shadow: 0 -1px 0 0 color-mix(in oklab, var(--color-hairline) 70%, transparent) inset;
+}
+
+@utility focus-glow {
+  outline: none;
+  box-shadow:
+    0 0 0 1px color-mix(in oklab, var(--color-cyan) 60%, transparent),
+    0 0 26px -6px var(--color-cyan);
+}
+
+/* Range inputs used in the agent forge. */
+input[type='range'] {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+input[type='range']::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 99px;
+  background: linear-gradient(90deg, #1e2a50, #2b3a6b);
+}
+input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  margin-top: -6px;
+  width: 16px;
+  height: 16px;
+  border-radius: 99px;
+  background: radial-gradient(circle at 35% 30%, #fff, var(--color-cyan));
+  box-shadow: 0 0 14px -2px var(--color-cyan);
+  border: none;
+}
+input[type='range']::-moz-range-track {
+  height: 4px;
+  border-radius: 99px;
+  background: #222f59;
+}
+input[type='range']::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border: none;
+  border-radius: 99px;
+  background: radial-gradient(circle at 35% 30%, #fff, var(--color-cyan));
+  box-shadow: 0 0 14px -2px var(--color-cyan);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
